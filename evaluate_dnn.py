@@ -22,6 +22,7 @@ from lib import eval_info
 from lib import util
 
 def main():
+    tf.loggign.set_verbosity(tf.logging.INFO)
     einfo = eval_info.eval_info()
     einfo.init(flags.images, flags.labels, flags.num_images)
     
@@ -30,18 +31,6 @@ def main():
     with tf.Session(graph = graph) as sess:
         input_tensor = graph.get_tensor_by_name(flags.input_tensor_name)
         output_tensor = graph.get_tensor_by_name(flags.output_tensor_name)
-
-        if flags.preprocess == 'grayscale':
-            jpeg_data_tensor, decoded_data_tensor = util.add_jpeg_grayscale_decoding(
-                flags.input_width, flags.input_height,
-            )
-            print('grayscale conversion was choosed as preprocess.')
-        else:
-            jpeg_data_tensor, decoded_data_tensor = util.add_jpeg_decoding(
-                flags.input_width, flags.input_height,
-                flags.input_depth
-            )
-            print('No preprocess was choosed.')
         
         ground_truth_tensor = tf.placeholder(
             tf.float32,
@@ -62,26 +51,28 @@ def main():
                 iinfo = cinfo.iinfo_list[image_id]
                 image_path = os.path.join(flags.image_dir, iinfo.name)
                 if flags.debug:
-                    print('Evaluate', image_path, class_id)
+                    tf.logging.info('Evaluate', image_path, class_id)
 
-                if not gfile.Exists(image_path):
-                    print(image_path, "doesn't exist.")
-                    
-                jpeg_data = tf.gfile.FastGFile(image_path, 'rb').read()
-                if flags.debug:
-                    raw_data = sess.run(raw_data_tensor,
-                             feed_dict={jpeg_data_tensor : jpeg_data})
-                    if flags.preprocess == 'grayscale':
-                        cv2.imwrite('test.png', raw_data)
-                    else:
-                        cv2.imwrite('test.png', cv2.cvtColor(raw_data, cv2.COLOR_RGB2BGR))
-                        
-                resized_data = sess.run(decoded_data_tensor,
-                                       feed_dict={jpeg_data_tensor : jpeg_data})
-                            
+                if flags.preprocess == 'rgb':
+                    image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+                    if image is None:
+                        tf.logging.error('Couldn\'t find {}'.format(image_path)) 
+                elif flags.preprocess == 'grayscale':
+                    image = cv2.imread(image_path, cv2.IMREAD_GRAY)
+                    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+                    if image is None:
+                        tf.loggign.error('Couldn\'t find {}'.format(image_path))
+                elif 'blur':
+                    tf.logging.error('preprocess \'blur\' is not implemented yet.')
+                else:
+                    tf.logging.error('preprocess \'{}\' is not allowed.'.format(flags.preprocess))
+
+                normalized_image = util.normalize_image(image)
+                resized_image = cv2.resize(normalized_image, (width, height))
+                expanded_image = np.expand_dims(resized_image, 0)                                    
                 results = sess.run(output_tensor,
                                    feed_dict={
-                                       input_tensor : resized_data})
+                                       input_tensor : expanded_data})
 
                 results = np.squeeze(results)
                 prob = results[class_id]
@@ -93,7 +84,7 @@ def main():
                         iinfo.rank = i
                         
                 if flags.debug:
-                    print('Result :', image_path, iinfo.rank, iinfo.prob)
+                    tf.logging.info('Result :', image_path, iinfo.rank, iinfo.prob)
 
                 for i in range(5):
                     tmp_cid = sorted_indexes[i]
@@ -175,7 +166,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--preprocess',
         type = str,
-        default = None,
+        default = rgb,
         help = 'if preprocess is needed, choose \"grayscale\"or \"blur\".'
     )
     parser.add_argument(
