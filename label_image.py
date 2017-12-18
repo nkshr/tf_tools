@@ -19,6 +19,9 @@ import numpy as np
 import tensorflow as tf
 
 import copy
+import math
+
+import cv2
 
 from lib import util
 
@@ -28,8 +31,8 @@ if __name__ == "__main__":
                        default="data/sunflower.jpg",
                        help="image to be classified (default data/sunflower.jpg)")
   parser.add_argument("--graph",
-                      default="data/fine_tuned_graph.pb",
-                      help="graph for image classification (default data/fine_tuned_graph.pb)")
+                      default="data/flower_graph.pb",
+                      help="graph for image classification (default data/flower_graph.pb)")
   parser.add_argument("--labels",
                       default="data/flower_labels.txt",
                       help="file containing labels (default ./data/flower_lalbels.txt)")
@@ -72,31 +75,21 @@ if __name__ == "__main__":
     
   graph = util.load_graph(flags.graph)
 
-  for op in graph.get_operations():
-    print(op.name)
-    
-  #input_name = flags.input_layer
-  #output_name = flags.output_layer
-  #input_operation = graph.get_operation_by_name(input_name);
-  #output_operation = graph.get_operation_by_name(output_name);
   input_tensor = graph.get_tensor_by_name(flags.input_tensor_name)
   output_tensor = graph.get_tensor_by_name(flags.output_tensor_name)
-  
   with tf.Session(graph=graph) as sess:
     jpeg_data_tensor, decoded_data_tensor = util.add_jpeg_decoding(flags.input_width, flags.input_height, flags.input_depth)
 
     if not tf.gfile.Exists(flags.image):
       print('File does not exist {}'.format(flags.image))
-    jpeg_data = tf.gfile.FastGFile(flags.image, 'rb').read()
 
-    decoded_data = sess.run(decoded_data_tensor,
-                            {jpeg_data_tensor : jpeg_data})
+    img = cv2.imread(flags.image, cv2.IMREAD_COLOR)
+    normalized_img = util.normalize_image(img)
+    resized_img = cv2.resize(normalized_img, (299, 299))
+    expanded_img = np.expand_dims(resized_img, 0)
 
-    #results = sess.run(output_operation.outputs[0],
-    #                  {input_operation.outputs[0]: decoded_data})
     results = sess.run(output_tensor,
-                       feed_dict = {input_tensor : decoded_tensor})
-    
+                       feed_dict = {input_tensor : expanded_img})
   results = np.squeeze(results)
   labels = util.load_labels(flags.labels)
   

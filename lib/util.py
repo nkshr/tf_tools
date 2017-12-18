@@ -6,10 +6,11 @@ import random
 import re
 import sys
 import tarfile
-
+import cv2
 import numpy as np
 from six.moves import urllib
 import tensorflow as tf
+import math
 
 from tensorflow.python.framework import graph_util
 from tensorflow.python.framework import tensor_shape
@@ -187,20 +188,20 @@ def read_tensor_from_image_file(file_name, input_height=299, input_width=299,
 
   return result
 
-def create_image_lists(fname, test_rate, val_rate):
-    image_lists = {}
+def create_image_lists(fname, test_rate, val_rate, num_classes):
+    image_lists = [{'train' : list(), 'test' : list(), 'val' : list() } for i in range(num_classes)]
     random.seed(1)
     with open(fname, 'r') as f:
         for line in f.readlines():
             toks = line.split()
             name = toks[0]
-            class_id = toks[1]
-            if class_id not in image_lists:
-                image_lists[class_id]={
-                    'train' : list(),
-                    'test' : list(),
-                    'val' : list()
-                }
+            class_id = int(toks[1])
+            # if class_id not in image_lists:
+            #     image_lists[class_id]={
+            #         'train' : list(),
+            #         'test' : list(),
+            #         'val' : list()
+            #     }
 
             rval = random.randrange(100) * 0.01
 
@@ -217,35 +218,37 @@ def write_out_image_lists(image_lists, ftrain, ftest, fval):
     flist = {'train' : ftrain, 'test' : ftest, 'val' : fval}
     for dtype, fname in flist.items():
         with open(fname, 'w') as f:
-            for class_id, image_list in image_lists.items():
-                for image in image_list['train']:
+            for class_id in range(len(image_lists)):
+                for image in image_lists[class_id]['train']:
                     f.write(image+' '+ str(class_id)+'\n')
 
-def sort_image_lists_by_class_id(image_lists):
-    class_ids = []
-    for k, v in image_lists.items():
-        class_ids.append(int(k))
+# def sort_image_lists_by_class_id(image_lists):
+#     class_ids = []
+#     for k, v in image_lists.items():
+#         class_ids.append(int(k))
 
-    sorted_indexes = np.argsort(class_ids)
-    sorted_image_lists = {}
-    for index in sorted_indexes:
-        class_id = class_ids[index]
-        sorted_image_lists[class_id] = image_lists[str(class_id)]
+#     sorted_indexes = np.argsort(class_ids)
+#     sorted_image_lists = {}
+#     for index in sorted_indexes:
+#         class_id = class_ids[index]
+#         sorted_image_lists[class_id] = image_lists[str(class_id)]
 
-    #for k in sorted_image_lists.keys():
-    #  print(k)
+#     #for k in sorted_image_lists.keys():
+#     #  print(k)
       
-    return sorted_image_lists
+#     return sorted_image_lists
 
 
 def get_image_batch(batch_size, itype, image_dir, image_lists,
                     decoded_image_tensor, jpeg_data_tensor,
                     bottleneck_tensor, resized_input_tensor, sess):
   class_count = len(image_lists.keys())
+  class_ids = list(image_lists.keys())
   ground_truths = []
   bottlenecks = []
   if batch_size < 0:
-    for class_id in image_lists.keys():
+    for class_index in range(class_count):
+      class_id = class_ids[class_index]
       for image_name in image_lists[class_id][itype]:
         image_path = os.path.join(image_dir, image_name)
         if not gfile.Exists(image_path):
@@ -256,11 +259,15 @@ def get_image_batch(batch_size, itype, image_dir, image_lists,
         bottleneck = sess.run(bottleneck_tensor,
                             feed_dict = {resized_input_tensor : resized_image_data})
         bottleneck = np.squeeze(bottleneck)
-        bottlenecks.append(bottleneck)          
+        bottlenecks.append(bottleneck)
+
+        ground_truth = np.zeros(class_count, dtype=np.float32)
+        ground_truth[class_index] = 1.0
+        ground_truths.append(ground_truth)
   else:
     for i in range(batch_size):
       class_index = random.randrange(class_count)
-      class_id = list(image_lists.keys())[class_index]
+      class_id = class_ids[class_index]
       ground_truth = np.zeros(class_count, dtype=np.float32)
       ground_truth[class_index] = 1.0
       ground_truths.append(ground_truth)
@@ -280,6 +287,89 @@ def get_image_batch(batch_size, itype, image_dir, image_lists,
       bottlenecks.append(bottleneck)
 
   return  bottlenecks, ground_truths
+
+def get_image_names(batch_size, itype, image_lists):
+  class_count = len(image_lists)
+  images = []
+  ground_truths = []
+  if batch_size < 0:
+    for class_id in range(class_count):
+      for image in image_lists[class_id][itype]:
+        images.append(image)
+        ground_truth = np.zeros(class_count, dtype=np.float32)
+        ground_truth[class_index] = 1.0
+        ground_truths.append(ground_truth)
+  else:
+    for i in range(batch_size):
+      while True:
+        class_id = random.randrange(class_count)
+        num_images = len(image_lists[class_id][itype])
+        if num_images > 0:
+          break
+        elif num_images == 0:
+          print(class_id, 'is empty.')
+
+      image_index = random.randrange(num_images)
+      image = image_lists[class_id][itype][image_index]
+      images.append(image)
+      ground_truth = np.zeros(class_count, dtype = np.float32)
+      ground_truth[class_id] = 1.0
+      ground_truths.append(ground_truth)
+
+  return images, ground_truths
+
+def get_bottlenecks(itype, preprocess, batch_size, width, height,
+                     image_dir, image_lists,
+                     bottleneck_tensor, input_tensor, sess):
+  image_names, ground_truths = get_image_names(batch_size, itype, image_lists)
+  bottlenecks = []
+  if preprocess == 'rgb':
+    for image_name in image_names:
+      image_path = os.path.join(image_dir, image_name)
+      image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+      normalized_image = normalize_image(image)
+      resized_image = cv2.resize(normalized_image, (width, height))
+      expanded_image = np.expand_dims(resized_image, 0)
+      bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : expanded_image})
+      bottleneck = np.squeeze(bottleneck)
+      bottlenecks.append(bottlenecks)
+  elif preprocess == 'grayscale':
+    for image_name in image_names:
+      image_path = os.path.join(image_dir, image_name)
+      image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+      image_3c = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+      normalized_image = normalize_image(image_3c)
+      resized_image = cv2.resize(normalized_image, (width, height))
+      expanded_image = np.expand_dims(resized_image, 0)
+      bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : expanded_image})
+      bottleneck = np.squeeze(bottleneck)
+      bottlenecks.append(bottleneck)
+  elif preprocess == 'blur':
+    tf.logging.error('preprocess \"blur\" is not implemented yet in get_bottlenecks.')
+  else:
+    tf.logging.error('preprocess \"{}\" is not allowed.'.format(preprocess))
+
+  return bottlenecks, ground_truths
+
+def read_gray_images(image_dir, image_names):
+  images = []
+  for image_name in image_names:
+    image_path = os.path.join(image_dir, image_name)
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    if image is None:
+      tf.logging.error('File does not exist {}'.format(image_path))
+    images.append(image)
+  return images
+
+def read_rgb_images(image_dir, image_names):
+  images = []
+  for image_name in image_names:
+    image_path = os.path.join(image_dir, image_name)
+    image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if image is None:
+      tf.logging.error('File does not exist {}'.format(image_path))
+    images.append(image)
+  return images
 
 def save_graph_to_file(sess, graph, graph_file_name, final_tensor_name):
   output_graph_def = graph_util.convert_variables_to_constants(
@@ -318,3 +408,12 @@ def remove_invalid_labels(results, labels, invalid_labels):
   results = normalize(results)
 
   return results, labels
+
+def normalize_image(img):
+    mean = np.mean(img, dtype=np.float32)
+    std = np.std(img, dtype=np.float32)
+    if std < sys.float_info.epsilon:
+      tf.logging.error("std is too small.")
+      std = 1.0
+    nimg = (img - mean) / std;
+    return nimg
