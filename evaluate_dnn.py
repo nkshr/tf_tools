@@ -22,7 +22,7 @@ from lib import eval_info
 from lib import util
 
 def main():
-    tf.loggign.set_verbosity(tf.logging.INFO)
+    tf.logging.set_verbosity(tf.logging.INFO)
     einfo = eval_info.eval_info()
     einfo.init(flags.images, flags.labels, flags.num_images)
     
@@ -44,35 +44,35 @@ def main():
             class_ids = flags.eval_classes
             
         for class_id in class_ids:
-            print('class', class_id, 'is processed.')
+            tf.logging.info('class {} is processed.'.format(class_id))
             cinfo= einfo.get_class_info(class_id)
                                 
             for image_id in range(len(cinfo.iinfo_list)):
                 iinfo = cinfo.iinfo_list[image_id]
                 image_path = os.path.join(flags.image_dir, iinfo.name)
                 if flags.debug:
-                    tf.logging.info('Evaluate', image_path, class_id)
+                    tf.logging.info('Evaluate {} {}'.format(image_path, class_id))
 
                 if flags.preprocess == 'rgb':
-                    image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+                    image = util.read_rgb_image(flags.input_width, flags.input_height, image_path)
                     if image is None:
-                        tf.logging.error('Couldn\'t find {}'.format(image_path)) 
+                        tf.logging.error('Couldn\'t find {}'.format(image_path))
+                    if flags.debug:
+                        tf.logging.info("rgb image read")
                 elif flags.preprocess == 'grayscale':
-                    image = cv2.imread(image_path, cv2.IMREAD_GRAY)
-                    image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+                    image = util.read_gray_image(flags.input_width, flags.input_height, image_path)
                     if image is None:
                         tf.loggign.error('Couldn\'t find {}'.format(image_path))
-                elif 'blur':
+                    if flags.debug:
+                        tf.logging.info("gray image read")
+                elif flags.preprocess == 'blur':
                     tf.logging.error('preprocess \'blur\' is not implemented yet.')
                 else:
                     tf.logging.error('preprocess \'{}\' is not allowed.'.format(flags.preprocess))
-
-                normalized_image = util.normalize_image(image)
-                resized_image = cv2.resize(normalized_image, (width, height))
-                expanded_image = np.expand_dims(resized_image, 0)                                    
+                   
                 results = sess.run(output_tensor,
                                    feed_dict={
-                                       input_tensor : expanded_data})
+                                       input_tensor : image})
 
                 results = np.squeeze(results)
                 prob = results[class_id]
@@ -84,7 +84,7 @@ def main():
                         iinfo.rank = i
                         
                 if flags.debug:
-                    tf.logging.info('Result :', image_path, iinfo.rank, iinfo.prob)
+                    tf.logging.info('Result : {} {} {}'.format(image_path, iinfo.rank, iinfo.prob))
 
                 for i in range(5):
                     tmp_cid = sorted_indexes[i]
@@ -131,13 +131,13 @@ if __name__ == '__main__':
     parser.add_argument(
         '--images',
         type = str,
-        default = 'data/flower_images.txt',
+        default = 'data/flower/images.txt',
         help = ''
     )
     parser.add_argument(
         '--labels',
         type = str,
-        default = 'data/flower_labels.txt',
+        default = 'data/flower/labels.txt',
         help = ''
     )
     parser.add_argument(
@@ -153,11 +153,6 @@ if __name__ == '__main__':
         default = 299
     )
     parser.add_argument(
-        '--input_depth',
-        type = int, 
-        default = 3
-    )
-    parser.add_argument(
         '--eval_classes',
         nargs = '*',
         type = int,
@@ -166,7 +161,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--preprocess',
         type = str,
-        default = rgb,
+        default = 'rgb',
         help = 'if preprocess is needed, choose \"grayscale\"or \"blur\".'
     )
     parser.add_argument(

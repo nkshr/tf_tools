@@ -184,7 +184,7 @@ def read_tensor_from_image_file(file_name, input_height=299, input_width=299,
   resized = tf.image.resize_bilinear(dims_expander, [input_height, input_width])
   normalized = tf.divide(tf.subtract(resized, [input_mean]), [input_std])
   sess = tf.Session()
-  result = sess.run(normalized)
+  result = sess.run(image_reader)
 
   return result
 
@@ -326,26 +326,25 @@ def get_bottlenecks(itype, preprocess, batch_size, width, height,
   if preprocess == 'rgb':
     for image_name in image_names:
       image_path = os.path.join(image_dir, image_name)
-      image = cv2.imread(image_path, cv2.IMREAD_COLOR)
-      normalized_image = normalize_image(image)
-      resized_image = cv2.resize(normalized_image, (width, height))
-      expanded_image = np.expand_dims(resized_image, 0)
-      bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : expanded_image})
+      image = read_rgb_image(image_path)
+      bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : image})
       bottleneck = np.squeeze(bottleneck)
       bottlenecks.append(bottlenecks)
   elif preprocess == 'grayscale':
     for image_name in image_names:
       image_path = os.path.join(image_dir, image_name)
-      image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-      image_3c = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-      normalized_image = normalize_image(image_3c)
-      resized_image = cv2.resize(normalized_image, (width, height))
-      expanded_image = np.expand_dims(resized_image, 0)
-      bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : expanded_image})
+      image = read_gray_image(image_path)
+      bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : image})
       bottleneck = np.squeeze(bottleneck)
       bottlenecks.append(bottleneck)
   elif preprocess == 'blur':
-    tf.logging.error('preprocess \"blur\" is not implemented yet in get_bottlenecks.')
+    #tf.logging.error('preprocess \"blur\" is not implemented yet in get_bottlenecks.')
+    for image_name in image_names:
+      image_path = os.path.join(image_dir, image_name)
+      image = read_blur_image(width, height, image_path)
+      bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : image})
+      bottleneck = np.squeeze(bottleneck)
+      bottlenecks.append(bottleneck)
   else:
     tf.logging.error('preprocess \"{}\" is not allowed.'.format(preprocess))
 
@@ -410,10 +409,42 @@ def remove_invalid_labels(results, labels, invalid_labels):
   return results, labels
 
 def normalize_image(img):
-    mean = np.mean(img, dtype=np.float32)
-    std = np.std(img, dtype=np.float32)
-    if std < sys.float_info.epsilon:
-      tf.logging.error("std is too small.")
-      std = 1.0
-    nimg = (img - mean) / std;
-    return nimg
+  mean = np.mean(img, dtype=np.float32)
+  std = np.std(img, dtype=np.float32)
+  if std < sys.float_info.epsilon:
+    tf.logging.info("std is too small.")
+    std = 1.0
+  nimg = (img - mean) / std
+  return nimg
+
+def read_rgb_image(width, height, image_path):
+  bgr_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+  rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+  image_as_float = rgb_image.astype(np.float32)
+  resized_image = cv2.resize(image_as_float, (width, height))
+  normalized_image = normalize_image(resized_image)
+  expanded_image = np.expand_dims(normalized_image, 0)
+  return expanded_image
+
+def read_gray_image(width, height, image_path):
+  gray_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+  image_as_3c = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
+  image_as_float = cv2.image_as_3c.astype(np.float32)
+  resized_image = cv2.resize(image_as_float, (width, height))
+  normalized_image = normalize_image(resized_image)
+  expanded_image = np.expand_dims(normalized_image, 0)
+  return expanded_image
+
+def read_blur_image(width, height, image_path):
+  bgr_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+  rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
+  image_as_float = rgb_image.astype(np.float32)
+  ksize = 10 + random.randrange(90)
+  if ksize % 2 == 0:
+    ksize += 1
+  sigma = 10 + random.randrange(90)
+  blur_image = cv2.GaussianBlur(image_as_float, (ksize, ksize), sigma)
+  resized_image = cv2.resize(blur_image, (width, height))
+  normalized_image = normalize_image(resized_image)
+  expanded_image = np.expand_dims(normalized_image, 0)
+  return expanded_image

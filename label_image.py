@@ -28,14 +28,14 @@ from lib import util
 if __name__ == "__main__":  
   parser = argparse.ArgumentParser()
   parser.add_argument("--image",
-                       default="data/sunflower.jpg",
-                       help="image to be classified (default data/sunflower.jpg)")
+                       default="data/flower/sunflower.jpg",
+                       help="image to be classified (default data/flower/sunflower.jpg)")
   parser.add_argument("--graph",
-                      default="data/flower_graph.pb",
-                      help="graph for image classification (default data/flower_graph.pb)")
+                      default="data/flower/fine_tuned_graph.pb",
+                      help="graph for image classification (default data/flower/fine_tuned_graph.pb)")
   parser.add_argument("--labels",
-                      default="data/flower_labels.txt",
-                      help="file containing labels (default ./data/flower_lalbels.txt)")
+                      default="data/flower/labels.txt",
+                      help="file containing labels (default ./data/flower/lalbels.txt)")
   parser.add_argument("--input_height",
                       default=299,
                       type=int,
@@ -44,10 +44,6 @@ if __name__ == "__main__":
                       default=299,
                       type=int,
                       help="input width (default 299)")
-  parser.add_argument("--input_depth",
-                      default=3,
-                      type=int,
-                      help="input_depth (default 3)")
   parser.add_argument("--input_layer",
                       default="input",
                       help="name of input layer (default input)")
@@ -56,7 +52,7 @@ if __name__ == "__main__":
                       help="name of outpu layer (default soft_max")  
   parser.add_argument("--result",
                       default="data/result.txt",
-                      help="name of result file (default data/result.txt")
+                      help="name of result file (default data/flower/result.txt)")
   parser.add_argument("--invalid_labels",
                       default = [],
                       nargs="*",
@@ -78,16 +74,16 @@ if __name__ == "__main__":
   input_tensor = graph.get_tensor_by_name(flags.input_tensor_name)
   output_tensor = graph.get_tensor_by_name(flags.output_tensor_name)
   with tf.Session(graph=graph) as sess:
-    jpeg_data_tensor, decoded_data_tensor = util.add_jpeg_decoding(flags.input_width, flags.input_height, flags.input_depth)
-
     if not tf.gfile.Exists(flags.image):
       print('File does not exist {}'.format(flags.image))
 
-    img = cv2.imread(flags.image, cv2.IMREAD_COLOR)
-    normalized_img = util.normalize_image(img)
-    resized_img = cv2.resize(normalized_img, (299, 299))
-    expanded_img = np.expand_dims(resized_img, 0)
-
+    bgr_img = cv2.imread(flags.image, cv2.IMREAD_COLOR)
+    rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+    img_as_float = rgb_img.astype(np.float32)
+    resized_img = cv2.resize(img_as_float, (flags.input_width, flags.input_height),fx=0, fy=0,interpolation=cv2.INTER_LINEAR)
+    normalized_img = util.normalize_image(resized_img)
+    expanded_img = np.expand_dims(normalized_img, 0)
+      
     results = sess.run(output_tensor,
                        feed_dict = {input_tensor : expanded_img})
   results = np.squeeze(results)
@@ -100,9 +96,10 @@ if __name__ == "__main__":
     for i in top_k:
       try:
         f.write(labels[i] + " " + str(results[i]) + "\n")
-        if flags.debug:
-          print(labels[i] + " " + str(results[i]))
           
       except IndexError as e:
         print(e, i)
         
+    for i in top_k[0:3]:
+      if flags.debug:
+        print(labels[i] + " " + str(results[i]))
