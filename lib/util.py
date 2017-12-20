@@ -429,7 +429,7 @@ def read_rgb_image(width, height, image_path):
 def read_gray_image(width, height, image_path):
   gray_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
   image_as_3c = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
-  image_as_float = cv2.image_as_3c.astype(np.float32)
+  image_as_float = image_as_3c.astype(np.float32)
   resized_image = cv2.resize(image_as_float, (width, height))
   normalized_image = normalize_image(resized_image)
   expanded_image = np.expand_dims(normalized_image, 0)
