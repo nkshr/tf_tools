@@ -62,11 +62,14 @@ def main():
                 elif flags.preprocess == 'grayscale':
                     image = util.read_gray_image(flags.input_width, flags.input_height, image_path)
                     if image is None:
-                        tf.loggign.error('Couldn\'t find {}'.format(image_path))
+                        tf.logging.error('Couldn\'t find {}'.format(image_path))
                     if flags.debug:
                         tf.logging.info("gray image read")
                 elif flags.preprocess == 'blur':
                     tf.logging.error('preprocess \'blur\' is not implemented yet.')
+                    image = util.read_blur_image(flags.input_width, flags.input_height, image_path)
+                    if image is None:
+                        tf.logging.error('Couldn\'t find {}'.format(image_path))                        
                 else:
                     tf.logging.error('preprocess \'{}\' is not allowed.'.format(flags.preprocess))
                    
@@ -107,7 +110,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--graph',
         type = str,
-        default = 'data/flower_graph.pb',
+        default = 'data/flower/fine_tuned_graph.pb',
         help=''
     )
     parser.add_argument(
