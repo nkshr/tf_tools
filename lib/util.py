@@ -419,6 +419,9 @@ def normalize_image(img):
 
 def read_rgb_image(width, height, image_path):
   bgr_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+  if bgr_image is None:
+    tf.logging.error('{} does not exist.'.format(image_path))
+    return None
   rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
   image_as_float = rgb_image.astype(np.float32)
   resized_image = cv2.resize(image_as_float, (width, height))
@@ -428,6 +431,9 @@ def read_rgb_image(width, height, image_path):
 
 def read_gray_image(width, height, image_path):
   gray_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+  if gray_image is None:
+    tf.logging.error('{} does not exist.'.format(image_path))
+    return None
   image_as_3c = cv2.cvtColor(gray_image, cv2.COLOR_GRAY2BGR)
   image_as_float = image_as_3c.astype(np.float32)
   resized_image = cv2.resize(image_as_float, (width, height))
@@ -437,6 +443,9 @@ def read_gray_image(width, height, image_path):
 
 def read_blur_image(width, height, image_path):
   bgr_image = cv2.imread(image_path, cv2.IMREAD_COLOR)
+  if bgr_image is None:
+    tf.logging.error('{} does not exist.'.format(image_path))
+    return None
   rgb_image = cv2.cvtColor(bgr_image, cv2.COLOR_BGR2RGB)
   image_as_float = rgb_image.astype(np.float32)
   ksize = 10 + random.randrange(90)
