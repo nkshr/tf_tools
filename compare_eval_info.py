@@ -1,5 +1,4 @@
-from eval_info import eval_info
-from eval_info import eval_info_comp
+from lib import eval_info
 
 import argparse
 import sys
@@ -36,7 +35,7 @@ if __name__ == '__main__':
 
     flags, unparsed = parser.parse_known_args() 
 
-    einfo_comp = eval_info_comp.eval_info_comp()
+    einfo_comp = eval_info.eval_info_comp()
     einfo_comp.read(flags.left, flags.right)
     einfo_comp.take_synthesis()
     einfo_comp.write(flags.result)
