@@ -66,8 +66,10 @@ def main():
                     if flags.debug:
                         tf.logging.info("gray image read")
                 elif flags.preprocess == 'blur':
-                    tf.logging.error('preprocess \'blur\' is not implemented yet.')
+                    #tf.logging.error('preprocess \'blur\' is not implemented yet.')
                     image = util.read_blur_image(flags.input_width, flags.input_height, image_path)
+                    if flags.debug:
+                        tf.logging.info("blur image read")
                     if image is None:
                         tf.logging.error('Couldn\'t find {}'.format(image_path))                        
                 else:
@@ -96,6 +98,9 @@ def main():
                     iinfo.top5[i]['prob'] = prob                    
 
     operations_path = os.path.join(flags.result_dir, 'operations.txt')
+    if not tf.gfile.Exists(flags.result_dir):
+        tf.gfile.MakeDirs(flags.result_dir)
+        
     with open(operations_path, 'w') as f:
         for op in graph.get_operations():
             f.write(op.name+'\n')
