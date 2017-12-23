@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--graph',
         type = str,
-        default = 'data/inception_v3_2016_08_28_frozen.pb'
+        default = 'data/rgb/inception_v3_2016_08_28_frozen.pb'
     )
     parser.add_argument(
         '--image_dir',
@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--images',
         type=str,
-        default='data/flower_images.txt'
+        default='data/flower/images.txt'
     )
     parser.add_argument(
         '--test_rate',
@@ -42,17 +42,17 @@ if __name__ == '__main__':
     parser.add_argument(
         '--val_images',
         type=str,
-        default='data/val_images.txt'
+        default='data/flower/val_images.txt'
     )
     parser.add_argument(
         '--test_images',
         type=str,
-        default='data/test_images.txt'
+        default='data/flower/test_images.txt'
     )
     parser.add_argument(
         '--train_images',
         type=str,
-        default='data/train_images.txt'
+        default='data/flower/train_images.txt'
     )
     parser.add_argument(
         '--num_train_steps',
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--operations',
         type = str,
-        default = 'data/operations.txt'
+        default = 'data/flower/operations.txt'
     )
     parser.add_argument(
         '--bottleneck_tensor_size',
@@ -112,12 +112,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--summary_dir',
         type = str,
-        default = 'data/retrain_logs',
+        default = 'data/flower/retrain_logs',
     )
     parser.add_argument(
         '--intermediate_graph_dir',
         type = str,
-        default = 'data/intermediate_graphs'
+        default = 'data/flower/intermediate_graphs'
     )
     parser.add_argument(
         '--intermediate_store_frequency',
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--fine_tuned_graph',
         type = str,
-        default = 'data/flower_graph.pb'
+        default = 'data/flower/fine_tuned_graph.pb'
     )
     parser.add_argument(
         '--train_batch_size',
@@ -166,6 +166,7 @@ if __name__ == '__main__':
     util.write_out_image_lists(image_lists, flags.train_images, flags.test_images, flags.val_images)
 
     with tf.Session(graph=graph) as sess:
+        tf.logging.info("Entering session")
         input_tensor = graph.get_tensor_by_name(flags.input_tensor_name)
         bottleneck_tensor = graph.get_tensor_by_name(flags.bottleneck_tensor_name)
         
@@ -173,7 +174,6 @@ if __name__ == '__main__':
         final_tensor) = util.add_final_training_ops(
             len(image_lists), flags.final_tensor_name, bottleneck_tensor,
             flags.bottleneck_tensor_size, flags.learning_rate)
-
         eval_step, pred = util.add_evaluation_step(
             final_tensor, ground_truth_input)
 
@@ -185,17 +185,20 @@ if __name__ == '__main__':
         sess.run(init)
 
         for i in range(flags.num_train_steps):
+            #tf.logging.info("Get train bottlenecks")
             train_bottlenecks, train_ground_truths = util.get_bottlenecks('train', flags.preprocess,
                                                                     flags.train_batch_size, flags.input_width, flags.input_height,
                                                                     flags.image_dir, image_lists,
                                                                     bottleneck_tensor, input_tensor, sess)
 
+            #tf.logging.info("Train the graph")
             train_summary, _ = sess.run([merged, train_step], feed_dict = {bottleneck_input :  train_bottlenecks,
                                  ground_truth_input : train_ground_truths})
             train_writer.add_summary(train_summary, i)
             
             is_last_step = (i + 1 == flags.num_train_steps)
             if (i % flags.eval_step_interval) == 0 or is_last_step:
+                #tf.logging.info("Evaluate graph by train images")
                 train_bottlenecks, train_ground_truths = util.get_bottlenecks('train', flags.preprocess,
                                                                     flags.train_batch_size, flags.input_width, flags.input_height,
                                                                     flags.image_dir, image_lists,

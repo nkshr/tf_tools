@@ -3,6 +3,7 @@ import os
 import csv
 import sys
 import random
+import math
 
 class eval_info:
     def init(self, labeled_images_file, labels_file, num_images):
@@ -357,11 +358,11 @@ class eval_info_comp:
         pass
 
     def read(self, left, right):
-        self.left_einfo = eval_info.eval_info()
+        self.left_einfo = eval_info()
         self.left_einfo.read(left)
         self.left_einfo.sort_by_class_id()
         
-        self.right_einfo = eval_info.eval_info()
+        self.right_einfo = eval_info()
         self.right_einfo.read(right)
         self.right_einfo.sort_by_class_id()
 

@@ -219,7 +219,7 @@ def write_out_image_lists(image_lists, ftrain, ftest, fval):
     for dtype, fname in flist.items():
         with open(fname, 'w') as f:
             for class_id in range(len(image_lists)):
-                for image in image_lists[class_id]['train']:
+                for image in image_lists[class_id][dtype]:
                     f.write(image+' '+ str(class_id)+'\n')
 
 # def sort_image_lists_by_class_id(image_lists):
@@ -239,54 +239,6 @@ def write_out_image_lists(image_lists, ftrain, ftest, fval):
 #     return sorted_image_lists
 
 
-def get_image_batch(batch_size, itype, image_dir, image_lists,
-                    decoded_image_tensor, jpeg_data_tensor,
-                    bottleneck_tensor, resized_input_tensor, sess):
-  class_count = len(image_lists.keys())
-  class_ids = list(image_lists.keys())
-  ground_truths = []
-  bottlenecks = []
-  if batch_size < 0:
-    for class_index in range(class_count):
-      class_id = class_ids[class_index]
-      for image_name in image_lists[class_id][itype]:
-        image_path = os.path.join(image_dir, image_name)
-        if not gfile.Exists(image_path):
-          tf.logging.error('File does not exist {}'.format(image_path))
-        jpeg_data = tf.gfile.FastGFile(image_path, 'rb').read()
-        resized_image_data = sess.run(decoded_image_tensor,
-                                  feed_dict = {jpeg_data_tensor : jpeg_data})
-        bottleneck = sess.run(bottleneck_tensor,
-                            feed_dict = {resized_input_tensor : resized_image_data})
-        bottleneck = np.squeeze(bottleneck)
-        bottlenecks.append(bottleneck)
-
-        ground_truth = np.zeros(class_count, dtype=np.float32)
-        ground_truth[class_index] = 1.0
-        ground_truths.append(ground_truth)
-  else:
-    for i in range(batch_size):
-      class_index = random.randrange(class_count)
-      class_id = class_ids[class_index]
-      ground_truth = np.zeros(class_count, dtype=np.float32)
-      ground_truth[class_index] = 1.0
-      ground_truths.append(ground_truth)
-
-      image_index = random.randrange(len(image_lists[class_id][itype]))
-      image_name = image_lists[class_id][itype][image_index]
-      image_path = os.path.join(image_dir, image_name)
-
-      if not gfile.Exists(image_path):
-        tf.logging.error('File does not exist {}'.format(image_path))
-      jpeg_data = tf.gfile.FastGFile(image_path, 'rb').read()
-      resized_image_data = sess.run(decoded_image_tensor,
-                                  feed_dict = {jpeg_data_tensor : jpeg_data})
-      bottleneck = sess.run(bottleneck_tensor,
-                            feed_dict = {resized_input_tensor : resized_image_data})
-      bottleneck = np.squeeze(bottleneck)
-      bottlenecks.append(bottleneck)
-
-  return  bottlenecks, ground_truths
 
 def get_image_names(batch_size, itype, image_lists):
   class_count = len(image_lists)
@@ -297,7 +249,7 @@ def get_image_names(batch_size, itype, image_lists):
       for image in image_lists[class_id][itype]:
         images.append(image)
         ground_truth = np.zeros(class_count, dtype=np.float32)
-        ground_truth[class_index] = 1.0
+        ground_truth[class_id] = 1.0
         ground_truths.append(ground_truth)
   else:
     for i in range(batch_size):
@@ -326,14 +278,14 @@ def get_bottlenecks(itype, preprocess, batch_size, width, height,
   if preprocess == 'rgb':
     for image_name in image_names:
       image_path = os.path.join(image_dir, image_name)
-      image = read_rgb_image(image_path)
+      image = read_rgb_image(width, height, image_path)
       bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : image})
       bottleneck = np.squeeze(bottleneck)
-      bottlenecks.append(bottlenecks)
+      bottlenecks.append(bottleneck)
   elif preprocess == 'grayscale':
     for image_name in image_names:
       image_path = os.path.join(image_dir, image_name)
-      image = read_gray_image(image_path)
+      image = read_gray_image(width, height, image_path)
       bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : image})
       bottleneck = np.squeeze(bottleneck)
       bottlenecks.append(bottleneck)
@@ -350,6 +302,28 @@ def get_bottlenecks(itype, preprocess, batch_size, width, height,
 
   return bottlenecks, ground_truths
 
+def get_expanded_bottlenecks(itype,
+                             gray_rate, blur_rate,
+                             batch_size, width, height,
+                             image_dir, image_lists,
+                             bottleneck_tensor, input_tensor, sess):
+  image_names, ground_truths = get_image_names(batch_size, itype, image_lists)
+  bottlenecks = []
+  for image_name in image_names:
+    image_path = os.path.join(image_dir, image_name)
+    rval = random.randrange(10) * 0.1
+    if rval < gray_rate:
+      image = read_gray_image(width, height, image_path)
+    elif gray_rate <= rval and rval < gray_rate + blur_rate:
+      image = read_blur_image(width, height, image_path)
+    else:
+      image = read_rgb_image(width, height, image_path)
+    bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor :image})
+    bottleneck = np.squeeze(bottleneck)
+    bottlenecks.append(bottleneck)
+
+  return bottlenecks, ground_truths
+  
 def read_gray_images(image_dir, image_names):
   images = []
   for image_name in image_names:

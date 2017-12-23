@@ -181,7 +181,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--result_dir',
         type = str,
-        default = 'data/einfo'
+        default = 'data/flower/einfo'
     )
     
     flags, unparsed = parser.parse_known_args()
