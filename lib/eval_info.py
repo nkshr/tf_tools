@@ -65,32 +65,54 @@ class eval_info:
         return num_topk / num_images
     
     def calc_top5_rate(self):
-        num_correct_preds = 0
-        num_images = 0
-        for cinfo in self.cinfo_list:
-            for iinfo in cinfo.iinfo_list:
-                num_images += 1
-                if iinfo.rank < 5:
-                    num_correct_preds += 1
+        # num_correct_preds = 0
+        # num_images = 0
+        # for cinfo in self.cinfo_list:
+        #     for iinfo in cinfo.iinfo_list:
+        #         num_images += 1
+        #         if iinfo.rank < 5:
+        #             num_correct_preds += 1
 
-        if  num_images:
-            self.top5_rate = num_correct_preds / num_images
+        # if  num_images:
+        #     self.top5_rate = num_correct_preds / num_images
+        # else:
+        #     self.top5_rate = 0
+        sum_top5_rate = 0
+        num_valid_classes = 0
+        for cinfo in self.cinfo_list:
+            if not cinfo.top5_rate < 0:
+                num_valid_classes += 1
+                sum_top5_rate += cinfo.top5_rate
+
+        if num_valid_classes:
+            self.top5_rate = sum_top5_rate / num_valid_classes
         else:
-            self.top5_rate = 0
+            self.top5_rate = -1
             
     def calc_top1_rate(self):        
-        num_correct_preds = 0
-        num_images = 0
+        # num_correct_preds = 0
+        # num_images = 0
         
+        # for cinfo in self.cinfo_list:
+        #     num_images += len(cinfo.iinfo_list)
+        #     for iinfo in cinfo.iinfo_list:
+        #         if iinfo.rank == 0:
+        #             num_correct_preds += 1
+        # if num_images:
+        #     self.top1_rate = num_correct_preds / num_images
+        # else:
+        #     self.top1_rate = 0
+        sum_top1_rate = 0
+        num_valid_classes = 0
         for cinfo in self.cinfo_list:
-            num_images += len(cinfo.iinfo_list)
-            for iinfo in cinfo.iinfo_list:
-                if iinfo.rank == 0:
-                    num_correct_preds += 1
-        if num_images:
-            self.top1_rate = num_correct_preds / num_images
+            if not cinfo.top1_rate < 0:
+                num_valid_classes += 1
+                sum_top1_rate += cinfo.top1_rate
+
+        if num_valid_classes:
+            self.top1_rate = sum_top1_rate / num_valid_classes
         else:
-            self.top1_rate = 0
+            self.top1_rate = -1
             
     def __iter__(self):
         self.cinfo_list_idx = 0
@@ -177,8 +199,10 @@ class eval_info:
         for cinfo in self.cinfo_list:
             cinfo.take_statistics()
         
-        self.top1_rate = self.calc_topk_rate(1)
-        self.top5_rate = self.calc_topk_rate(5)
+        #self.top1_rate = self.calc_topk_rate(1)
+        #self.top5_rate = self.calc_topk_rate(5)
+        self.calc_top1_rate()
+        self.calc_top5_rate()
         self.calc_top1_rate_rank()
         self.calc_top5_rate_rank()
 

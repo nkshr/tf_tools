@@ -313,10 +313,13 @@ def get_expanded_bottlenecks(itype,
     image_path = os.path.join(image_dir, image_name)
     rval = random.randrange(10) * 0.1
     if rval < gray_rate:
+      #tf.logging.info('gray')
       image = read_gray_image(width, height, image_path)
     elif gray_rate <= rval and rval < gray_rate + blur_rate:
+      #tf.logging.info('blur')
       image = read_blur_image(width, height, image_path)
     else:
+      #tf.logging.info('rgb')
       image = read_rgb_image(width, height, image_path)
     bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor :image})
     bottleneck = np.squeeze(bottleneck)
@@ -383,11 +386,14 @@ def remove_invalid_labels(results, labels, invalid_labels):
   return results, labels
 
 def normalize_image(img):
-  mean = np.mean(img, dtype=np.float32)
-  std = np.std(img, dtype=np.float32)
-  if std < sys.float_info.epsilon:
-    tf.logging.info("std is too small.")
-    std = 1.0
+  #We should normalize image by following commentout-region, but We use mean=0 and std=255, because Google fixs mean and std.
+  # mean = np.mean(img, dtype=np.float32)
+  # std = np.std(img, dtype=np.float32)
+  # if std < sys.float_info.epsilon:
+  #   tf.logging.info("std is too small.")
+  #   std = 1.0
+  mean = 0
+  std = 255
   nimg = (img - mean) / std
   return nimg
 
