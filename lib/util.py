@@ -282,7 +282,7 @@ def get_bottlenecks(itype, preprocess, batch_size, width, height,
       bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor : image})
       bottleneck = np.squeeze(bottleneck)
       bottlenecks.append(bottleneck)
-  elif preprocess == 'grayscale':
+  elif preprocess == 'gray':
     for image_name in image_names:
       image_path = os.path.join(image_dir, image_name)
       image = read_gray_image(width, height, image_path)
@@ -299,18 +299,11 @@ def get_bottlenecks(itype, preprocess, batch_size, width, height,
       bottlenecks.append(bottleneck)
   else:
     tf.logging.error('preprocess \"{}\" is not allowed.'.format(preprocess))
+    exit(1)
 
   return bottlenecks, ground_truths
 
-def get_expanded_bottlenecks(itype,
-                             gray_rate, blur_rate,
-                             batch_size, width, height,
-                             image_dir, image_lists,
-                             bottleneck_tensor, input_tensor, sess):
-  image_names, ground_truths = get_image_names(batch_size, itype, image_lists)
-  bottlenecks = []
-  for image_name in image_names:
-    image_path = os.path.join(image_dir, image_name)
+def read_preprocessed_image(width, height, gray_rate, blur_rate, image_path):
     rval = random.randrange(10) * 0.1
     if rval < gray_rate:
       #tf.logging.info('gray')
@@ -321,12 +314,25 @@ def get_expanded_bottlenecks(itype,
     else:
       #tf.logging.info('rgb')
       image = read_rgb_image(width, height, image_path)
+    return image
+  
+def get_expanded_bottlenecks(itype,
+                             gray_rate, blur_rate,
+                             batch_size, width, height,
+                             image_dir, image_lists,
+                             bottleneck_tensor, input_tensor, sess):
+  image_names, ground_truths = get_image_names(batch_size, itype, image_lists)
+  bottlenecks = []
+  for image_name in image_names:
+    image_path = os.path.join(image_dir, image_name)
+    image = read_preprocessed_image(width, height, gray_rate, blur_rate, image_path)
     bottleneck = sess.run(bottleneck_tensor, feed_dict = {input_tensor :image})
     bottleneck = np.squeeze(bottleneck)
     bottlenecks.append(bottleneck)
 
   return bottlenecks, ground_truths
-  
+
+
 def read_gray_images(image_dir, image_names):
   images = []
   for image_name in image_names:

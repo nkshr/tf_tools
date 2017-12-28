@@ -44,37 +44,41 @@ def main():
             class_ids = flags.eval_classes
             
         for class_id in class_ids:
-            tf.logging.info('class {} is processed.'.format(class_id))
             cinfo= einfo.get_class_info(class_id)
-                                
+            tf.logging.info('class_id : {}'.format(class_id))
+            tf.logging.info('num_images : {}'.format(len(cinfo.iinfo_list)))
+
             for image_id in range(len(cinfo.iinfo_list)):
                 iinfo = cinfo.iinfo_list[image_id]
                 image_path = os.path.join(flags.image_dir, iinfo.name)
                 if flags.debug:
                     tf.logging.info('Evaluate {} {}'.format(image_path, class_id))
 
-                if flags.preprocess == 'rgb':
-                    image = util.read_rgb_image(flags.input_width, flags.input_height, image_path)
-                    if image is None:
-                        tf.logging.error('Couldn\'t find {}'.format(image_path))
-                    if flags.debug:
-                        tf.logging.info("rgb image read")
-                elif flags.preprocess == 'grayscale':
-                    image = util.read_gray_image(flags.input_width, flags.input_height, image_path)
-                    if image is None:
-                        tf.logging.error('Couldn\'t find {}'.format(image_path))
-                    if flags.debug:
-                        tf.logging.info("gray image read")
-                elif flags.preprocess == 'blur':
-                    #tf.logging.error('preprocess \'blur\' is not implemented yet.')
-                    image = util.read_blur_image(flags.input_width, flags.input_height, image_path)
-                    if flags.debug:
-                        tf.logging.info("blur image read")
-                    if image is None:
-                        tf.logging.error('Couldn\'t find {}'.format(image_path))                        
-                else:
-                    tf.logging.error('preprocess \'{}\' is not allowed.'.format(flags.preprocess))
-                   
+                # if flags.preprocess == 'rgb':
+                #     image = util.read_rgb_image(flags.input_width, flags.input_height, image_path)
+                #     if image is None:
+                #         tf.logging.error('Couldn\'t find {}'.format(image_path))
+                #     if flags.debug:
+                #         tf.logging.info("rgb image read")
+                # elif flags.preprocess == 'gray':
+                #     image = util.read_gray_image(flags.input_width, flags.input_height, image_path)
+                #     if image is None:
+                #         tf.logging.error('Couldn\'t find {}'.format(image_path))
+                #     if flags.debug:
+                #         tf.logging.info("gray image read")
+                # elif flags.preprocess == 'blur':
+                #     #tf.logging.error('preprocess \'blur\' is not implemented yet.')
+                #     image = util.read_blur_image(flags.input_width, flags.input_height, image_path)
+                #     if flags.debug:
+                #         tf.logging.info("blur image read")
+                #     if image is None:
+                #         tf.logging.error('Couldn\'t find {}'.format(image_path))                        
+                # else:
+                #     tf.logging.error('preprocess \'{}\' is not allowed.'.format(flags.preprocess))
+                #     return -1
+                image = util.read_preprocessed_image(flags.input_width, flags.input_height,
+                                                     flags.gray_rate, flags.blur_rate,
+                                                     image_path)
                 results = sess.run(output_tensor,
                                    feed_dict={
                                        input_tensor : image})
@@ -97,6 +101,10 @@ def main():
                     iinfo.top5[i]['class_id'] = tmp_cid
                     iinfo.top5[i]['prob'] = prob                    
 
+            cinfo.take_statistics()
+            tf.logging.info('top1_rate : {}'.format(cinfo.top1_rate))
+            tf.logging.info('top5_rate : {}'.format(cinfo.top5_rate))
+            
     operations_path = os.path.join(flags.result_dir, 'operations.txt')
     if not tf.gfile.Exists(flags.result_dir):
         tf.gfile.MakeDirs(flags.result_dir)
@@ -105,8 +113,12 @@ def main():
         for op in graph.get_operations():
             f.write(op.name+'\n')
 
-    einfo.take_statistcs()
-    #einfo.sort_by_top1_rate()
+    einfo.take_statistics()
+    tf.logging.info('total')
+    tf.logging.info('num_images : {}'.format(einfo.num_images))
+    tf.logging.info('top1_rate : {}'.format(einfo.top1_rate))
+    tf.logging.info('top5_rate : {}'.format(einfo.top5_rate))
+    einfo.sort_by_top1_rate()
 
     einfo.write(flags.result_dir)
                 
@@ -170,7 +182,7 @@ if __name__ == '__main__':
         '--preprocess',
         type = str,
         default = 'rgb',
-        help = 'if preprocess is needed, choose \"grayscale\"or \"blur\".'
+        help = 'if preprocess is needed, choose \"gray\"or \"blur\".'
     )
     parser.add_argument(
         '--num_images',
@@ -182,6 +194,16 @@ if __name__ == '__main__':
         '--result_dir',
         type = str,
         default = 'data/flower/einfo'
+    )
+    parser.add_argument(
+        '--gray_rate',
+        type = float,
+        default = 0.0
+    )
+    parser.add_argument(
+        '--blur_rate',
+        type = float,
+        default = 0.0
     )
     
     flags, unparsed = parser.parse_known_args()

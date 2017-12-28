@@ -11,8 +11,9 @@ class eval_info:
             labels = [line.replace('\n', '')  for line in f.readlines()];
 
         self.cinfo_list = []
-        self.top1_rate = 0
-        self.top5_rate = 0
+        self.top1_rate = -1
+        self.top5_rate = -1
+        self.num_images = 0
         
         class_id = 0
         for label in labels:
@@ -33,6 +34,7 @@ class eval_info:
                 cinfo = self.cinfo_list[idx]
                 if len(cinfo.iinfo_list) < num_images or num_images < 0:
                     cinfo.iinfo_list.append(iinfo)
+                    self.num_images += 1
                 #self.__cinfo_list[idx].images.append(image)
 
             for cinfo in self.cinfo_list:
@@ -52,31 +54,19 @@ class eval_info:
             if cinfo.class_id == class_id:
                 return cinfo
 
-    def calc_topk_rate(self, k):
-        num_topk = 0
-        num_images = 0
-        for cinfo in self.cinfo_list:
-            for iinfo in cinfo.iinfo_list:
-                if not iinfo.rank < 0:
-                    num_images += 1
-                    if iinfo.rank < k and iinfo.rank >= 0:
-                        num_topk += 1
+    # def calc_topk_rate(self, k):
+    #     num_topk = 0
+    #     num_images = 0
+    #     for cinfo in self.cinfo_list:
+    #         for iinfo in cinfo.iinfo_list:
+    #             if not iinfo.rank < 0:
+    #                 num_images += 1
+    #                 if iinfo.rank < k and iinfo.rank >= 0:
+    #                     num_topk += 1
 
-        return num_topk / num_images
+    #     return num_topk / num_images
     
     def calc_top5_rate(self):
-        # num_correct_preds = 0
-        # num_images = 0
-        # for cinfo in self.cinfo_list:
-        #     for iinfo in cinfo.iinfo_list:
-        #         num_images += 1
-        #         if iinfo.rank < 5:
-        #             num_correct_preds += 1
-
-        # if  num_images:
-        #     self.top5_rate = num_correct_preds / num_images
-        # else:
-        #     self.top5_rate = 0
         sum_top5_rate = 0
         num_valid_classes = 0
         for cinfo in self.cinfo_list:
@@ -90,18 +80,6 @@ class eval_info:
             self.top5_rate = -1
             
     def calc_top1_rate(self):        
-        # num_correct_preds = 0
-        # num_images = 0
-        
-        # for cinfo in self.cinfo_list:
-        #     num_images += len(cinfo.iinfo_list)
-        #     for iinfo in cinfo.iinfo_list:
-        #         if iinfo.rank == 0:
-        #             num_correct_preds += 1
-        # if num_images:
-        #     self.top1_rate = num_correct_preds / num_images
-        # else:
-        #     self.top1_rate = 0
         sum_top1_rate = 0
         num_valid_classes = 0
         for cinfo in self.cinfo_list:
@@ -195,7 +173,7 @@ class eval_info:
             cinfo.read(os.path.join(dir, class_csv))
             self.cinfo_list.append(cinfo)
 
-    def take_statistcs(self):
+    def take_statistics(self):
         for cinfo in self.cinfo_list:
             cinfo.take_statistics()
         
@@ -218,35 +196,35 @@ class class_info:
         self.top5_rate_rank = -1
         self.evaluated = False
         
-    def calc_top1_rate(self):
-        if (len(self.iinfo_list)) == 0:
-            self.top1_rate = -1
-            return
+    # def calc_top1_rate(self):
+    #     if (len(self.iinfo_list)) == 0:
+    #         self.top1_rate = -1
+    #         return
 
-        if iinfo_list[0].rank < -1:
-            self.top1_rate = -1
-            return 
+    #     if iinfo_list[0].rank < -1:
+    #         self.top1_rate = -1
+    #         return 
 
-        num_top1 = 0
-        for iinfo in self.iinfo_list:
-            if iinfo.rank == 0:
-                num_top1 += 1
-        self.top1_rate = num_top1 / len(self.iinfo_list)
+    #     num_top1 = 0
+    #     for iinfo in self.iinfo_list:
+    #         if iinfo.rank == 0:
+    #             num_top1 += 1
+    #     self.top1_rate = num_top1 / len(self.iinfo_list)
 
-    def calc_top5_rate(self):
-        if (len(self.iinfo_list)) == 0:
-            self.top5_rate = -1
-            return
+    # def calc_top5_rate(self):
+    #     if (len(self.iinfo_list)) == 0:
+    #         self.top5_rate = -1
+    #         return
 
-        if iinfo_list[0].rank < -1:
-            self.top1_rate = -1
-            return
+    #     if iinfo_list[0].rank < -1:
+    #         self.top1_rate = -1
+    #         return
         
-        num_top5 = 0
-        for iinfo in self.iinfo_list:
-            if iinfo.rank < 5 and iinfo.rank > 0:
-                num_top5 += 1
-        self.top5_rate = num_top5 / len(self.iinfo_list)
+    #     num_top5 = 0
+    #     for iinfo in self.iinfo_list:
+    #         if iinfo.rank < 5 and iinfo.rank > 0:
+    #             num_top5 += 1
+    #     self.top5_rate = num_top5 / len(self.iinfo_list)
 
     def calc_topk_rate(self, k):
         if (len(self.iinfo_list)) == 0:
@@ -395,7 +373,8 @@ class eval_info_comp:
                 
     def take_synthesis(self):
         self.roc_list = [-1 for i in range(self.right_einfo.get_class_count())]
-
+        num_right_win = 0
+        num_left_win = 0
         for class_id in range(self.left_einfo.get_class_count()):
             left_cinfo = self.left_einfo.get_class_info(class_id)
             right_cinfo = self.right_einfo.get_class_info(class_id)
@@ -403,7 +382,11 @@ class eval_info_comp:
                 self.roc_list[class_id] = -1
             else:
                 self.roc_list[class_id] = (right_cinfo.top1_rate / left_cinfo.top1_rate)
-
+            if right_cinfo.top1_rate > left_cinfo.top1_rate:
+                num_right_win += 1
+            elif left_cinfo.top1_rate > right_cinfo.top1_rate:
+                num_left_win += 1
+                
         self.sum_roc = 0
         self.ave = 0
         num_valid_roc = 0
@@ -419,23 +402,15 @@ class eval_info_comp:
             if roc >= 0:
                 self.sdev += pow(roc - self.ave, 2.0)
         self.sdev = math.sqrt(self.sdev / num_valid_roc)
+        self.right_win_rate = num_right_win/self.right_einfo.get_class_count()
+        self.left_win_rate = num_left_win/self.left_einfo.get_class_count()
 
-        num_roc_under1 = 0
-        
-        for roc in self.roc_list:
-            if roc < 0:
-                continue
-            if roc < 1:
-                num_roc_under1 += 1
-        
-        self.roc_under1_rate = num_roc_under1 / num_valid_roc
-        pass
-    
     def write(self, fname):
         with open(fname, 'w') as f:
             writer = csv.writer(f, delimiter=',', quotechar='"')
             
-            writer.writerow(['roc_under1_rate', self.roc_under1_rate])
+            writer.writerow(['right_win_rate', self.right_win_rate])
+            writer.writerow(['left_win_rate', self.left_win_rate])
             writer.writerow(['ave', self.ave])
             writer.writerow(['sdev', self.sdev])
 
@@ -447,8 +422,7 @@ class eval_info_comp:
                 roc = self.roc_list[class_id]
                 writer.writerow([class_id, left_cinfo.label, left_cinfo.top1_rate, right_cinfo.top1_rate, roc])
 
-        pass
-
+    
     def write_left_einfo(self, fname):
         self.left_einfo.write(fname)
 

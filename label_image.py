@@ -77,15 +77,9 @@ if __name__ == "__main__":
     if not tf.gfile.Exists(flags.image):
       print('File does not exist {}'.format(flags.image))
 
-    bgr_img = cv2.imread(flags.image, cv2.IMREAD_COLOR)
-    rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
-    img_as_float = rgb_img.astype(np.float32)
-    resized_img = cv2.resize(img_as_float, (flags.input_width, flags.input_height),fx=0, fy=0,interpolation=cv2.INTER_LINEAR)
-    normalized_img = util.normalize_image(resized_img)
-    expanded_img = np.expand_dims(normalized_img, 0)
-      
+    img = util.read_rgb_image(flags.input_width, flags.input_height, flags.image)
     results = sess.run(output_tensor,
-                       feed_dict = {input_tensor : expanded_img})
+                       feed_dict = {input_tensor : img})
   results = np.squeeze(results)
   labels = util.load_labels(flags.labels)
   

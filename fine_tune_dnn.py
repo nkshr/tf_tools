@@ -90,11 +90,6 @@ if __name__ == '__main__':
         default = 1001
     )
     parser.add_argument(
-        '--preprocess',
-        type = str,
-        default = 'rgb'
-    )
-    parser.add_argument(
         '--final_tensor_name',
         type = str,
         default = 'softmax'
@@ -152,12 +147,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--gray_rate',
         type = float,
-        default = 0.1
+        default = 0.0
     )
     parser.add_argument(
         '--blur_rate',
         type = float,
-        default = 0.1
+        default = 0.0
     )
     flags, unparsed = parser.parse_known_args()
 
@@ -195,8 +190,7 @@ if __name__ == '__main__':
         sess.run(init)
 
         for i in range(flags.num_train_steps):
-            if flags.preprocess == 'all':
-                train_bottlenecks, train_ground_truths = util.get_expanded_bottlenecks('train',
+            train_bottlenecks, train_ground_truths = util.get_expanded_bottlenecks('train',
                                                                                        flags.gray_rate,
                                                                                        flags.blur_rate,
                                                                                        flags.train_batch_size,
@@ -207,17 +201,6 @@ if __name__ == '__main__':
                                                                                        bottleneck_tensor,
                                                                                        input_tensor,
                                                                                        sess)
-            else:
-                train_bottlenecks, train_ground_truths = util.get_bottlenecks('train',
-                                                                              flags.preprocess,
-                                                                              flags.train_batch_size,
-                                                                              flags.input_width,
-                                                                              flags.input_height,
-                                                                              flags.image_dir,
-                                                                              image_lists,
-                                                                              bottleneck_tensor,
-                                                                              input_tensor,
-                                                                              sess)
 
             #tf.logging.info("Train the graph")
             train_summary, _ = sess.run([merged, train_step], feed_dict = {bottleneck_input :  train_bottlenecks,
@@ -226,8 +209,7 @@ if __name__ == '__main__':
             
             is_last_step = (i + 1 == flags.num_train_steps)
             if (i % flags.eval_step_interval) == 0 or is_last_step:
-                if flags.preprocess == 'all':
-                    train_bottlenecks, train_ground_truths = util.get_expanded_bottlenecks('train',
+                train_bottlenecks, train_ground_truths = util.get_expanded_bottlenecks('train',
                                                                                            flags.gray_rate,
                                                                                            flags.blur_rate,
                                                                                            flags.train_batch_size,
@@ -238,17 +220,6 @@ if __name__ == '__main__':
                                                                                            bottleneck_tensor,
                                                                                            input_tensor,
                                                                                            sess)
-                else:
-                    train_bottlenecks, train_ground_truths = util.get_bottlenecks('train',
-                                                                                  flags.preprocess,
-                                                                                  flags.train_batch_size,
-                                                                                  flags.input_width,
-                                                                                  flags.input_height,
-                                                                                  flags.image_dir,
-                                                                                  image_lists,
-                                                                                  bottleneck_tensor,
-                                                                                  input_tensor,
-                                                                                  sess)
                 train_accuracy, cross_entropy_value = sess.run(
                     [eval_step, cross_entropy],
                     feed_dict = {bottleneck_input : train_bottlenecks,
@@ -258,8 +229,7 @@ if __name__ == '__main__':
                 tf.logging.info('%s: Step %d: Cross entroy = %f' %
                                 (datetime.now(), i, cross_entropy_value))
 
-                if flags.preprocess == 'all':
-                    val_bottlenecks, val_ground_truths = util.get_expanded_bottlenecks('val',
+                val_bottlenecks, val_ground_truths = util.get_expanded_bottlenecks('val',
                                                                                        flags.gray_rate,
                                                                                        flags.blur_rate,
                                                                                        flags.val_batch_size,
@@ -270,17 +240,7 @@ if __name__ == '__main__':
                                                                                        bottleneck_tensor,
                                                                                        input_tensor,
                                                                                        sess)
-                else:
-                    val_bottlenecks, val_ground_truths = util.get_bottlenecks('val',
-                                                                              flags.preprocess,
-                                                                              flags.val_batch_size,
-                                                                              flags.input_width,
-                                                                              flags.input_height,
-                                                                              flags.image_dir,
-                                                                              image_lists,
-                                                                              bottleneck_tensor,
-                                                                              input_tensor,
-                                                                              sess)
+                
                 val_summary, val_accuracy = sess.run(
                     [merged, eval_step],
                     feed_dict = {bottleneck_input : val_bottlenecks,
@@ -295,8 +255,7 @@ if __name__ == '__main__':
                 tf.logging.info('Save intermediate result to : ' + intermediate_file_name)
                 util.save_graph_to_file(sess, graph, intermediate_file_name, flags.final_tensor_name)
 
-        if flags.preprocess == 'all':
-            test_bottlenecks, test_ground_truths = util.get_expanded_bottlenecks('test',
+        test_bottlenecks, test_ground_truths = util.get_expanded_bottlenecks('test',
                                                                                  flags.gray_rate,
                                                                                  flags.blur_rate,
                                                                                  flags.test_batch_size,
@@ -307,17 +266,6 @@ if __name__ == '__main__':
                                                                                  bottleneck_tensor,
                                                                                  input_tensor,
                                                                                  sess)
-        else:
-            test_bottlenecks, test_ground_truths = util.get_bottlenecks('test',
-                                                                        flags.preprocess,
-                                                                        flags.val_batch_size,
-                                                                        flags.input_width,
-                                                                        flags.input_height,
-                                                                        flags.image_dir,
-                                                                        image_lists,
-                                                                        bottleneck_tensor,
-                                                                        input_tensor,
-                                                                        sess)
         test_accuracy, preds = sess.run(
             [eval_step, pred],
             feed_dict={bottleneck_input : test_bottlenecks,
