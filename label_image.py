@@ -51,7 +51,7 @@ if __name__ == "__main__":
                       default="soft_max",
                       help="name of outpu layer (default soft_max")  
   parser.add_argument("--result",
-                      default="data/result.txt",
+                      default="data/flower/result.txt",
                       help="name of result file (default data/flower/result.txt)")
   parser.add_argument("--invalid_labels",
                       default = [],

@@ -166,10 +166,12 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--input_width',
+        type = int,
         default = 299
     )
     parser.add_argument(
         '--input_height',
+        type = int,
         default = 299
     )
     parser.add_argument(
@@ -178,12 +180,12 @@ if __name__ == '__main__':
         type = int,
         help = 'If eval_classes are not  specified, all classes are evaluated.Otherwise only specified classes are evaluated.'
     )
-    parser.add_argument(
-        '--preprocess',
-        type = str,
-        default = 'rgb',
-        help = 'if preprocess is needed, choose \"gray\"or \"blur\".'
-    )
+    # parser.add_argument(
+    #     '--preprocess',
+    #     type = str,
+    #     default = 'rgb',
+    #     help = 'if preprocess is needed, choose \"gray\"or \"blur\".'
+    # )
     parser.add_argument(
         '--num_images',
         type = int,

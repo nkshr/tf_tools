@@ -378,18 +378,26 @@ def normalize(v):
 
 def remove_invalid_labels(results, labels, invalid_labels):
   invalid_idxs = list()
-  for invalid_label in invalid_labels:
-    try:
-      idx = labels.index(invalid_label)
-      labels.pop(idx)
-      results = np.delete(results, idx)
-      print(invalid_label, "is removed.")
-    except ValueError as e:
-      print("labels doesn't contain", invalid_label, ".")
+  new_labels = list()
+  new_results = list()
+  for i in range(len(labels)):
+    label = labels[i]
+    result = results[i]
+    invalid = False
+    for ilabel in invalid_labels:
+      if i == int(ilabel):
+        invalid = True
+        break
+    if not invalid:
+      new_labels.append(label)
+      new_results.append(result)
+    else:
+      print(label, "is removed.")
 
-  results = normalize(results)
+  new_results_np = np.array(new_results, dtype=np.float32)
+  new_results_np = normalize(new_results_np)
 
-  return results, labels
+  return new_results_np, new_labels
 
 def normalize_image(img):
   #We should normalize image by following commentout-region, but We use mean=0 and std=255, because Google fixs mean and std.
