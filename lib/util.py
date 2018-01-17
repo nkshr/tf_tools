@@ -258,8 +258,9 @@ def get_image_names(batch_size, itype, image_lists):
         num_images = len(image_lists[class_id][itype])
         if num_images > 0:
           break
-        elif num_images == 0:
-          print(class_id, 'is empty.')
+        #elif num_images == 0:
+          #pass
+          #print(class_id, 'is empty.')
 
       image_index = random.randrange(num_images)
       image = image_lists[class_id][itype][image_index]
@@ -451,3 +452,38 @@ def read_blur_image(width, height, image_path):
   normalized_image = normalize_image(resized_image)
   expanded_image = np.expand_dims(normalized_image, 0)
   return expanded_image
+
+def load_images(fname):
+  images = {}
+  with open(fname, 'r') as f:
+    for line in f.readlines():
+      toks = line.split()
+      name = toks[0]
+      class_id = int(toks[1])
+      if class_id not in images:
+        images[class_id] = list()
+      else:
+        images[class_id].append(name)
+
+  return images
+
+def write_data_conf(train, val, test, labels, conf):
+  with open(conf, 'w') as f:
+    for i in range(len(labels)):
+      if i in train:
+        num_train = len(train[i])
+      else:
+        num_train = 0
+
+      if i in val:
+        num_val = len(val[i])
+      else:
+        num_val = 0
+        
+      if i in test:
+        num_test = len(test[i])
+      else:
+        num_test = 0
+        
+      line = "\"{}\",{},{},{}\n".format(labels[i], num_train, num_val, num_test)
+      f.write(line)

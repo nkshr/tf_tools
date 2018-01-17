@@ -378,8 +378,8 @@ class eval_info_comp:
         for class_id in range(self.left_einfo.get_class_count()):
             left_cinfo = self.left_einfo.get_class_info(class_id)
             right_cinfo = self.right_einfo.get_class_info(class_id)
-            if left_cinfo.top1_rate < sys.float_info.epsilon or right_cinfo.top1_rate < 0:
-                self.roc_list[class_id] = -1
+            if left_cinfo.top1_rate < sys.float_info.epsilon:
+                self.roc_list[class_id] = (right_cinfo.top1_rate / sys.float_info.epsilon)
             else:
                 self.roc_list[class_id] = (right_cinfo.top1_rate / left_cinfo.top1_rate)
             if right_cinfo.top1_rate > left_cinfo.top1_rate:
