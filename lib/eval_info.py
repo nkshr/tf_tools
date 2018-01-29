@@ -370,7 +370,7 @@ class eval_info_comp:
 
         if self.left_einfo.get_class_count() != self.right_einfo.get_class_count():
             raise ValueError('{}({}) and {}({}) have same number of classes.'.format(left, left_einfo.get_class_count(), right,right_einfo.get_class_count()))
-                
+
     def take_synthesis(self):
         self.roc_list = [-1 for i in range(self.right_einfo.get_class_count())]
         num_right_win = 0
@@ -380,6 +380,8 @@ class eval_info_comp:
             right_cinfo = self.right_einfo.get_class_info(class_id)
             if left_cinfo.top1_rate < sys.float_info.epsilon:
                 self.roc_list[class_id] = (right_cinfo.top1_rate / sys.float_info.epsilon)
+            elif right_cinfo.top1_rate < sys.float_info.epsilon:
+                self.roc_list[class_id] = (sys.float_info.epsilon / left_cinfo.top1_rate)
             else:
                 self.roc_list[class_id] = (right_cinfo.top1_rate / left_cinfo.top1_rate)
             if right_cinfo.top1_rate > left_cinfo.top1_rate:

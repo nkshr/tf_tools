@@ -305,7 +305,7 @@ def get_bottlenecks(itype, preprocess, batch_size, width, height,
   return bottlenecks, ground_truths
 
 def read_preprocessed_image(width, height, gray_rate, blur_rate, image_path):
-    rval = random.randrange(10) * 0.1
+    rval = random.randrange(100) * 0.01
     if rval < gray_rate:
       #tf.logging.info('gray')
       image = read_gray_image(width, height, image_path)
@@ -447,6 +447,8 @@ def read_blur_image(width, height, image_path):
   if ksize % 2 == 0:
     ksize += 1
   sigma = 10 + random.randrange(90)
+  #ksize = 5
+  #sigma = 3
   blur_image = cv2.GaussianBlur(image_as_float, (ksize, ksize), sigma)
   resized_image = cv2.resize(blur_image, (width, height))
   normalized_image = normalize_image(resized_image)
